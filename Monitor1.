@@ -1,0 +1,110 @@
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.io.File;
+import java.util.Scanner;
+public class Monitor1 {
+    
+    Lock laas;
+    SubsekvensRegister register;
+    Monitor1(){
+        laas = new ReentrantLock();
+        register = new SubsekvensRegister();
+    }
+    public void settInn(HashMap<String,Subsekvens> map){
+        laas.lock();
+        try{
+            register.hashBeholder.add(map);
+        }finally{
+            laas.unlock();
+        }
+    }
+
+    public HashMap<String, Subsekvens> flett(HashMap<String, Subsekvens> map1, HashMap<String, Subsekvens> map2){
+        laas.lock();
+        try{
+            return register.flett(map1, map2);
+        }
+        finally{
+            laas.unlock();
+        }
+    }
+
+    public HashMap<String, Subsekvens> flettSammen(){
+        laas.lock();
+        try{
+            return register.flettSammen();
+        }
+        finally{
+            laas.unlock();
+        }
+    }
+
+    public String finnStørste(HashMap<String, Subsekvens> h){
+        laas.lock();
+        try{
+            return register.finnStørste(h);
+        }
+        finally{
+            laas.unlock();
+        }
+    }
+
+    public String finnStørste(){
+        laas.lock();
+        try{
+            return register.finnStørste();
+        }
+        finally{
+            laas.unlock();
+        }
+    }
+
+    public void lesMappe(String mappe) throws FileNotFoundException {
+        String loc = "./" + mappe + "/";
+        File metafFile = new File(loc + "metadata.csv");
+        Scanner scan = new Scanner(metafFile);
+        ArrayList<Thread> threads = new ArrayList<Thread>();
+        while (scan.hasNextLine()){
+            // Thread mintr = new Thread(new LeseTrad(loc + scan.nextLine(), this));
+            // threads.add(mintr);
+            // mintr.start();
+        }
+        threads.forEach((thr) -> {
+            try{
+                thr.join();
+            }
+            catch(Exception e){
+                System.out.println(e);
+            }
+        });
+        scan.close();
+    }    
+
+    public HashMap<String,Subsekvens> lesFil(String fil){
+        laas.lock();
+        try{
+            return register.lesFil(fil);
+
+        }
+        catch(Exception e){
+            System.out.println("Problem med å lese fil. Error: " + e);
+        }
+        finally{
+            laas.unlock();
+        }
+        return new HashMap<String,Subsekvens>();
+    }
+
+    public int antall(){
+        return register.hashBeholder.size();
+    }
+
+    @Override
+    public String toString(){
+        return register.toString();
+    }
+
+}

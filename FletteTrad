@@ -1,0 +1,64 @@
+import java.util.HashMap;
+public class FletteTrad implements Runnable{
+    /*
+    Thread design:
+    Threads run in a while loop, and the while checks if the condition is not set. If the condition for finishing is set, it will terminate by finishing the run function.
+    So: Lesetrad function as usual. FletteTrad wait for the conditions: InsertertedThread condition, sent by LeseTrad, lock available, and terminate = false.
+    Terminate is a bool variable, not a condition. Set terminate to true, and waiting threads will finish
+
+    */
+    Monitor2 monitor;
+    FletteTrad(Monitor2 inmonitor){
+        monitor = inmonitor;
+    }
+
+    public void run(){
+        while (monitor.terminate == false) {
+            
+        
+        monitor.laas.lock();
+        try {
+            while(monitor.antall() < 2){
+                monitor.sattInnSubSekvens.await();
+            } 
+            Beholder input = monitor.hentTo();
+            monitor.settInnFlettet(flett(input.en, input.to));
+        } catch(InterruptedException e){
+
+        }
+         catch (Exception e) {
+            System.out.println("Thread crashed unexpectedly" + e);
+        }
+        finally{
+            monitor.laas.unlock();
+        }
+    }
+
+    }
+
+    private HashMap<String, Subsekvens> flett(HashMap<String, Subsekvens> map1, HashMap<String, Subsekvens> map2){
+        HashMap<String, Subsekvens> flettet = new HashMap<String, Subsekvens>();
+        for (String key : map1.keySet()) {
+            Subsekvens current = flettet.get(key);
+            if(current == null){
+                flettet.put(key, map1.get(key));
+            }
+            else{
+                int flettetAntall = current.antall();
+                int mittAntall = map1.get(key).antall();
+                current.settAntall(flettetAntall + mittAntall);
+            }
+        }
+        for (String key : map2.keySet()) {
+            Subsekvens current = flettet.get(key);
+            if(current == null){
+                flettet.put(key, map2.get(key));
+            }
+            else{
+                int mittAntall = map2.get(key).antall();
+                current.increaseAntall(mittAntall);
+            }
+        }
+        return flettet;
+    }
+}

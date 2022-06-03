@@ -1,0 +1,110 @@
+import java.util.concurrent.locks.Condition;
+import java.io.FileNotFoundException;
+import java.util.HashMap;
+import java.util.ArrayList;
+import java.io.File;
+import java.util.Scanner;
+
+public class Monitor2 extends Monitor1 {
+    public Condition sattInnSubSekvens;
+    public boolean terminate;
+    private int antallTråder;
+    ArrayList<Thread> fletteTråder;
+    String tf;
+    Monitor2(String infected) {
+        super();
+        sattInnSubSekvens = laas.newCondition();
+        terminate = false;
+        antallTråder = 8;
+        tf = infected;
+        fletteTråder = new ArrayList<Thread>();
+        for (int i = 0; i < antallTråder; i++) {
+            Thread tr = new Thread(new FletteTrad(this));
+            fletteTråder.add(tr);
+            tr.start();
+        }
+    }
+
+    public Beholder hentTo() {
+        System.out.println("henter to");
+        return new Beholder(register.hashBeholder.remove(0), register.hashBeholder.remove(0));
+    }
+
+    public void settInnFlettet(HashMap<String, Subsekvens> ferdig) {
+        register.hashBeholder.add(ferdig);
+        sattInnSubSekvens.signal();
+        System.out.println("sender signal");
+    }
+
+    public void lesMappe2(String mappe) throws FileNotFoundException {
+        lesMappe(mappe);
+        System.out.println("lest ferdig mappe");
+        //Denne delen av koden vil være tilgjengelig etter at alle lesetråder er ferdige.
+        //Skjekk om det bare er en hashmap igjen. Hvis det er bare en, send terminate. Hvis ikke, vent på oppdatering og sjekk igjen.
+        //Flette trådene vil refreshe frem til det terminate blir true.
+ 
+        laas.lock();
+        try{
+            while(antall() > 1){
+                sattInnSubSekvens.await();
+            }
+            terminate = true;
+            fletteTråder.forEach((tr) -> {
+                tr.interrupt();
+            });
+        }
+        catch(Exception e){
+            System.out.println(e);
+        }
+        finally{
+            laas.unlock();
+        }
+
+    }
+
+    public void lesMappe(String mappe) throws FileNotFoundException {
+        String loc = "./" + mappe + "/";
+        File metafFile = new File(loc + "metadata.csv");
+        Scanner scan = new Scanner(metafFile);
+        ArrayList<Thread> threads = new ArrayList<Thread>();
+        while (scan.hasNextLine()){
+            String linje = scan.nextLine();
+            String[] deler = linje.split(",");
+            String linjetf = deler[1].trim().toLowerCase();
+            if(linjetf.equals(tf)){
+                Thread mintr = new Thread(new LeseTrad(loc + deler[0], this));
+                threads.add(mintr);
+                System.out.println("laget lese tråd");
+                mintr.start();
+            }
+        }
+        threads.forEach((thr) -> {
+            try{
+                thr.join();
+            }
+            catch(Exception e){
+                System.out.println(e);
+            }
+        });
+        scan.close();
+    }   
+
+    //En ekstra funksjonlitet på lesfil er bare å sende signalet at noe var satt inn
+    @Override
+    public HashMap<String,Subsekvens> lesFil(String fil){
+        laas.lock();
+        try{
+            HashMap<String,Subsekvens> r = register.lesFil(fil);
+            sattInnSubSekvens.signal();
+            return r;
+        }
+        catch(Exception e){
+            System.out.println("Problem med å lese fil. Error: " + e);
+        }
+        finally{
+            laas.unlock();
+        }
+        return new HashMap<String,Subsekvens>();
+    }
+
+}
